@@ -26,6 +26,9 @@ def _quantize_weight(w, dtype, **opt):
 
     assert dtype == "mx4", f"{dtype=}"
     wq, w_scale = downcast_to_mxfp(w.to(torch.bfloat16), torch.uint8, axis=-1)
+    # Ensure column-major stride for mxfp weights to satisfy matmul assertions.
+    if wq.stride(-2) != 1:
+        wq = wq.transpose(-1, -2).contiguous().transpose(-1, -2)
     if opt:
         if "value_layout" in opt:
             wq = convert_layout(wrap_torch_tensor(wq, dtype=FP4), opt["value_layout"], **opt["value_layout_opts"])
@@ -71,8 +74,8 @@ def _make_mx4_quantization_opts(batch: int, dtype: str) -> dict:
     if dtype != "mx4" or is_hip():
         return {}
     num_warps = 4 if batch <= 512 and cuda_capability_geq(10, 0) else 8
-    value_layout, value_layout_opts = layout.make_default_matmul_mxfp4_w_layout(mx_axis=-1)
-    scale_layout, scale_layout_opts = layout.make_default_matmul_mxfp4_w_scale_layout(mx_axis=-1, num_warps=num_warps)
+    value_layout, value_layout_opts = layout.make_default_matmul_mxfp4_w_layout(mx_axis=1)
+    scale_layout, scale_layout_opts = layout.make_default_matmul_mxfp4_w_scale_layout(mx_axis=1, num_warps=num_warps)
     return {
         "value_layout": value_layout,
         "value_layout_opts": value_layout_opts,
