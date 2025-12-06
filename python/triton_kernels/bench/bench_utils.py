@@ -26,6 +26,9 @@ def _quantize_weight(w, dtype, **opt):
 
     assert dtype == "mx4", f"{dtype=}"
     wq, w_scale = downcast_to_mxfp(w.to(torch.bfloat16), torch.uint8, axis=-1)
+    # Matmul expects column-major mxfp weights on newer CUDA; keep logical layout while fixing stride.
+    if wq.stride(-2) != 1:
+        wq = wq.transpose(-1, -2).contiguous().transpose(-1, -2)
     if opt:
         if "value_layout" in opt:
             wq = convert_layout(wrap_torch_tensor(wq, dtype=FP4), opt["value_layout"], **opt["value_layout_opts"])
