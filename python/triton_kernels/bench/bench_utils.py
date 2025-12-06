@@ -51,9 +51,9 @@ def _quantize_activation(x, dtype=None, **opt):
 @dataclass
 class MlpNumerics:
     x: torch.Tensor | Tensor | None
-    wg: torch.Tensor | Tensor
-    w1: torch.Tensor | Tensor
-    w2: torch.Tensor | Tensor
+    wg: torch.Tensor | Tensor | None
+    w1: torch.Tensor | Tensor | None
+    w2: torch.Tensor | Tensor | None
     pcg: PrecisionConfig
     pc1: PrecisionConfig
     pc2: PrecisionConfig
@@ -70,8 +70,15 @@ def _make_default_mlp_activation() -> FusedActivation:
 def _make_mx4_quantization_opts(batch: int, dtype: str) -> dict:
     if dtype != "mx4" or is_hip():
         return {}
-    # Keep strided layout to avoid additional strides that can break matmul shape checks.
-    return {}
+    num_warps = 4 if batch <= 512 and cuda_capability_geq(10, 0) else 8
+    value_layout, value_layout_opts = layout.make_default_matmul_mxfp4_w_layout(mx_axis=1)
+    scale_layout, scale_layout_opts = layout.make_default_matmul_mxfp4_w_scale_layout(mx_axis=1, num_warps=num_warps)
+    return {
+        "value_layout": value_layout,
+        "value_layout_opts": value_layout_opts,
+        "scale_layout": scale_layout,
+        "scale_layout_opts": scale_layout_opts,
+    }
 
 
 def _make_mx8_quantization_opts(dtype: str) -> dict:
