@@ -325,6 +325,7 @@ has_native_mx4 = torch.cuda.get_device_capability(0)[0] >= 10 or get_cdna_versio
     ] +
     # moe cases - test precision
     ([
+        (128, 1024, 1024, 128, 2, "mx8", "mx4", 1, 1),
         (128, 1024, 1024, 128, 2, "fp8", "mx4", 1, 1),
         (1024, 1024, 1024, 128, 2, "fp8", "mx4", 1, 1),
         (1024, 1024, 1024, 128, 2, "fp8", "mx4", 1, 4),
