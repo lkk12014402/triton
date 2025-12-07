@@ -255,14 +255,15 @@ def distributed_run(rank, world_size, batch, dim1, dim2, n_expts_tot, n_expts_ac
 
     wg_unquantized = wg
     numerics = prepare_mlp_numerics(batch, w_dtype, wg_unquantized, w1, w2, x=xd, x_dtype=x_dtype)
-    xd, wg, w1, w2 = numerics.x, numerics.wg, numerics.w1, numerics.w2
+    xdq, wg, w1, w2 = numerics.x, numerics.wg, numerics.w1, numerics.w2
     pcg, pc1, pc2, act = numerics.pcg, numerics.pc1, numerics.pc2, numerics.activation
     if rank == 0:
         full_numerics = prepare_mlp_numerics(batch, w_dtype, wg_unquantized, w1_full, w2_full, x=x0, x_dtype=x_dtype)
-        x0 = full_numerics.x
+        x0q = full_numerics.x
         w1_full, w2_full = full_numerics.w1, full_numerics.w2
         pc1_full, pc2_full = full_numerics.pc1, full_numerics.pc2
     else:
+        x0q = None
         pc1_full = pc2_full = None
 
     expt_assignment = create_expt_assignment(EP, n_expts_tot, torch.device(dev))
@@ -279,36 +280,36 @@ def distributed_run(rank, world_size, batch, dim1, dim2, n_expts_tot, n_expts_ac
     )
 
     # single-GPU pass
-    def single(x):
+    def single(x, xq):
         xg = x.to(wg.dtype if n_expts_tot > 1 else x.dtype)
         if n_expts_tot > 1:
             logits = matmul(xg, wg, bg, precision_config=pcg)
-            x, rdata, gi, si, _ = routing(x, logits, n_expts_act)
+            xq, rdata, gi, si, _ = routing(xq, logits, n_expts_act)
         else:
             rdata = gi = si = None
-        x = matmul(x, w1_full, b1_full, rdata, gather_indx=gi, precision_config=pc1_full, fused_activation=act)
-        x = matmul(x, w2_full, b2_full, rdata, scatter_indx=si, precision_config=pc2_full)
-        return reduce_scatter(x, n_expts_act, None, None)
+        xq = matmul(xq, w1_full, b1_full, rdata, gather_indx=gi, precision_config=pc1_full, fused_activation=act)
+        xq = matmul(xq, w2_full, b2_full, rdata, scatter_indx=si, precision_config=pc2_full)
+        return reduce_scatter(xq, n_expts_act, None, None)
 
     # distributed pass
-    def distributed(x):
+    def distributed(x, xq):
         xg = x.to(wg.dtype if n_expts_tot > 1 else x.dtype)
         if n_expts_tot > 1:  # sparse
             logits = matmul(xg, wg, bg, precision_config=pcg)
-            x, rdata, gi, si, metadata = routing(x, logits, n_expts_act, EP=EP, TP=TP, expt_assignment=expt_assignment,
+            xq, rdata, gi, si, metadata = routing(xq, logits, n_expts_act, EP=EP, TP=TP, expt_assignment=expt_assignment,
                                                  mode="ep_sharding")
         else:  # dense
-            x = all_gather(x, dim=0)
+            xq = all_gather(xq, dim=0)
             rdata = gi = si = metadata = None
-        x = matmul(x, w1, b1, rdata, gather_indx=gi, precision_config=pc1, fused_activation=act)
-        x = matmul(x, w2, b2 if rank % TP == 0 else None, rdata, scatter_indx=si, precision_config=pc2)
-        x = reduce_scatter(x, n_expts_act, metadata=metadata, expt_assignment=expt_assignment)
+        xq = matmul(xq, w1, b1, rdata, gather_indx=gi, precision_config=pc1, fused_activation=act)
+        xq = matmul(xq, w2, b2 if rank % TP == 0 else None, rdata, scatter_indx=si, precision_config=pc2)
+        xq = reduce_scatter(xq, n_expts_act, metadata=metadata, expt_assignment=expt_assignment)
         # gather the result from all GPUs, just for verification
-        return all_gather(x, dim=0)
+        return all_gather(xq, dim=0)
 
-    distributed_result = distributed(xd)
+    distributed_result = distributed(xd, xdq)
     if rank == 0:
-        single_result = single(x0)
+        single_result = single(x0, x0q)
         torch.testing.assert_close(distributed_result.to(torch.float16), single_result.to(torch.float16), rtol=1e-2,
                                    atol=1.0, equal_nan=True)
 
