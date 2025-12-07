@@ -248,21 +248,23 @@ def distributed_run(rank, world_size, batch, dim1, dim2, n_expts_tot, n_expts_ac
     b1_full = gather_full(rank, world_size, b1, TP, EP, concat_dim_inside=1, concat_dim_outside=0)
     b2_full = gather_ep(rank, world_size, b2, TP, EP)
 
+    # inputs
+    input_dtype = resolve_x_dtype(x_dtype)
+    xd = torch.randn((batch // world_size, dim1), device=dev).to(input_dtype)
+    x0 = all_gather(xd, dim=0)
+
     wg_unquantized = wg
-    numerics = prepare_mlp_numerics(batch, w_dtype, wg_unquantized, w1, w2)
-    wg, w1, w2 = numerics.wg, numerics.w1, numerics.w2
+    numerics = prepare_mlp_numerics(batch, w_dtype, wg_unquantized, w1, w2, x=xd, x_dtype=x_dtype)
+    xd, wg, w1, w2 = numerics.x, numerics.wg, numerics.w1, numerics.w2
     pcg, pc1, pc2, act = numerics.pcg, numerics.pc1, numerics.pc2, numerics.activation
     if rank == 0:
-        full_numerics = prepare_mlp_numerics(batch, w_dtype, wg_unquantized, w1_full, w2_full)
+        full_numerics = prepare_mlp_numerics(batch, w_dtype, wg_unquantized, w1_full, w2_full, x=x0, x_dtype=x_dtype)
+        x0 = full_numerics.x
         w1_full, w2_full = full_numerics.w1, full_numerics.w2
         pc1_full, pc2_full = full_numerics.pc1, full_numerics.pc2
     else:
         pc1_full = pc2_full = None
 
-    # inputs
-    input_dtype = resolve_x_dtype(x_dtype)
-    xd = torch.randn((batch // world_size, dim1), device=dev).to(input_dtype)
-    x0 = all_gather(xd, dim=0)
     expt_assignment = create_expt_assignment(EP, n_expts_tot, torch.device(dev))
     symm_mem_pool.initialize_matmul(
         n_tokens_global=batch,
