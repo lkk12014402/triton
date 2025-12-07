@@ -114,7 +114,7 @@ def all_gather(x: torch.Tensor, dim=0) -> torch.Tensor:
 def reduce_scatter(
     input_tensor: torch.Tensor,
     n_expts_act: int,
-    metadata: ReduceScatterMetadata,
+    metadata: Optional[ReduceScatterMetadata] = None,
     expt_assignment: Optional[ExptAssignment] = None,
     dim: int = 0,
     op: dist.ReduceOp.RedOpType = dist.ReduceOp.SUM,
@@ -131,7 +131,9 @@ def reduce_scatter(
         else:
             raise NotImplementedError(f"Distributed reduce_scatter mode {metadata.mode} is not implemented yet.")
     else:
-        return input_tensor
+        output = input_tensor.view(-1, n_expts_act, input_tensor.shape[-1])
+        output, _ = reduce(output, dim=1)
+        return output
 
 
 # TODO: support TP > 1
@@ -283,7 +285,8 @@ def distributed_run(rank, world_size, batch, dim1, dim2, n_expts_tot, n_expts_ac
         else:
             rdata = gi = si = None
         x = matmul(x, w1_full, b1_full, rdata, gather_indx=gi, precision_config=pc1_full, fused_activation=act)
-        return matmul(x, w2_full, b2_full, rdata, scatter_indx=si, precision_config=pc2_full)
+        x = matmul(x, w2_full, b2_full, rdata, scatter_indx=si, precision_config=pc2_full)
+        return reduce_scatter(x, n_expts_act, None, None)
 
     # distributed pass
     def distributed(x):
