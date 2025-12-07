@@ -119,7 +119,7 @@ def reduce_scatter(
     dim: int = 0,
     op: dist.ReduceOp.RedOpType = dist.ReduceOp.SUM,
 ) -> torch.Tensor:
-    if _is_distributed_launch():
+    if metadata and _is_distributed_launch():
         if metadata.mode and metadata.mode == "ep_sharding":
             if dim != 0 or op != dist.ReduceOp.SUM:
                 raise NotImplementedError("Only dim=0 and op=SUM are supported for MoE reduce_scatter.")
