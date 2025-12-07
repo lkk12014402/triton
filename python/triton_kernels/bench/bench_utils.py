@@ -38,8 +38,7 @@ def _quantize_activation(x, dtype=None, **opt):
     if x is None or dtype is None or "mx" not in dtype:
         return x, InFlexData(), None
     assert dtype == "mx8", f"{dtype=}"
-    fp8_dtype = torch.float8_e4m3fn if get_cdna_version() != 3 else torch.float8_e4m3fnuz
-    xq, x_scale = downcast_to_mxfp(x.to(torch.bfloat16), fp8_dtype, axis=1)
+    xq, x_scale = downcast_to_mxfp(x.to(torch.bfloat16), x.dtype, axis=1)
     if opt:
         if "value_layout" in opt:
             xq = convert_layout(wrap_torch_tensor(xq, dtype=xq.dtype), opt["value_layout"], **opt["value_layout_opts"])
@@ -92,11 +91,6 @@ def _make_mx8_quantization_opts(dtype: str) -> dict:
 
 
 def prepare_mlp_numerics(batch: int, w_dtype: str, wg, w1, w2, *, x=None, x_dtype: str | None = None) -> MlpNumerics:
-    """
-    Quantize weights (and optionally activations) for the MLP benchmark.
-    When x/x_dtype specify mx8, x is downcast to mxfp8 and a_mx_scale is set for the gate matmul (a=mx8).
-    Weights using w_dtype=\"mx4\" are downcast to mxfp4 with the corresponding b_mx_scale.
-    """
     w_quant_opts = _make_mx4_quantization_opts(batch, w_dtype)
     act_quant_opts = _make_mx8_quantization_opts(x_dtype or "")
 
@@ -111,8 +105,8 @@ def prepare_mlp_numerics(batch: int, w_dtype: str, wg, w1, w2, *, x=None, x_dtyp
         wg=wg,
         w1=w1,
         w2=w2,
-        pcg=PrecisionConfig(flex_ctx=FlexCtx(rhs_data=wg_flex), a_mx_scale=x_scale, b_mx_scale=wg_scale),
-        pc1=PrecisionConfig(flex_ctx=FlexCtx(lhs_data=x_flex, rhs_data=w1_flex), b_mx_scale=w1_scale),
+        pcg=PrecisionConfig(flex_ctx=FlexCtx(rhs_data=wg_flex), b_mx_scale=wg_scale),
+        pc1=PrecisionConfig(flex_ctx=FlexCtx(lhs_data=x_flex, rhs_data=w1_flex), a_mx_scale=x_scale, b_mx_scale=w1_scale),
         pc2=PrecisionConfig(flex_ctx=FlexCtx(rhs_data=w2_flex), b_mx_scale=w2_scale),
         activation=activation,
     )
