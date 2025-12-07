@@ -28,10 +28,10 @@ def _quantize_weight(w, dtype, **opt):
     wq, w_scale = downcast_to_mxfp(w.to(torch.bfloat16), torch.uint8, axis=1)
     if opt:
         if "value_layout" in opt:
-            w = convert_layout(wrap_torch_tensor(w, dtype=FP4), opt["value_layout"], **opt["value_layout_opts"])
+            wq = convert_layout(wrap_torch_tensor(wq, dtype=FP4), opt["value_layout"], **opt["value_layout_opts"])
         if "scale_layout" in opt:
             w_scale = convert_layout(wrap_torch_tensor(w_scale), opt["scale_layout"], **opt["scale_layout_opts"])
-    return w, InFlexData(), w_scale
+    return wq, InFlexData(), w_scale
 
 
 def _quantize_activation(x, dtype=None, **opt):
