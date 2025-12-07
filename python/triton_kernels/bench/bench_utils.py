@@ -25,7 +25,7 @@ def _quantize_weight(w, dtype, **opt):
         return wq, InFlexData(dtype=wq.dtype, scale=w.abs().max().unsqueeze(0)), None
 
     assert dtype == "mx4", f"{dtype=}"
-    wq, w_scale = downcast_to_mxfp(w.to(torch.bfloat16), torch.uint8, axis=-1)
+    wq, w_scale = downcast_to_mxfp(w.to(torch.bfloat16), torch.uint8, axis=1)
     if opt:
         if "value_layout" in opt:
             w = convert_layout(wrap_torch_tensor(w, dtype=FP4), opt["value_layout"], **opt["value_layout_opts"])
@@ -39,7 +39,7 @@ def _quantize_activation(x, dtype=None, **opt):
         return x, InFlexData(), None
     assert dtype == "mx8", f"{dtype=}"
     fp8_dtype = torch.float8_e4m3fn if get_cdna_version() != 3 else torch.float8_e4m3fnuz
-    xq, x_scale = downcast_to_mxfp(x.to(torch.bfloat16), fp8_dtype, axis=-1)
+    xq, x_scale = downcast_to_mxfp(x.to(torch.bfloat16), fp8_dtype, axis=1)
     if opt:
         if "value_layout" in opt:
             xq = convert_layout(wrap_torch_tensor(xq, dtype=xq.dtype), opt["value_layout"], **opt["value_layout_opts"])
