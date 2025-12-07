@@ -37,7 +37,8 @@ def _quantize_weight(w, dtype, **opt):
 def _quantize_activation(x, dtype=None, **opt):
     if x is None or dtype is None or "mx" not in dtype:
         return x, InFlexData(), None
-    assert dtype == "mx8", f"{dtype=}"
+    assert dtype == "mx8" and x.ndim == 2, f"{dtype=}"
+    x = x.unsqueeze(0)
     xq, x_scale = downcast_to_mxfp(x.to(torch.bfloat16), x.dtype, axis=1)
     if opt:
         if "value_layout" in opt:
