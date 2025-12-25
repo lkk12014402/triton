@@ -622,29 +622,15 @@ print(kernel.asm['cubin'])
 
 ## MXFP4
 
-Case M=8192 N=8192 dtype=torch.bfloat16 block=32 tiles=(16,64) deq_tile=128
-  Triton FakeQuant:  avg 0.231 ms  min 0.226 ms  max 0.243 ms  ~BW 1164.04 GB/s
-  Python FakeQuant:  avg 9.367 ms  min 9.355 ms  max 9.412 ms
-  MXFP4QTensor.quantize: avg 10.303 ms  min 10.295 ms  max 10.319 ms  outputs ~33.55MB packed + 2.10MB scales
-  Triton Dequant:     avg 0.287 ms  min 0.280 ms  max 0.299 ms  ~BW 1058.10 GB/s
-  Python Dequantize:  avg 2.033 ms  min 2.025 ms  max 2.042 ms
-  Dequant correctness: max diff 0.00e+00  mean diff 0.00e+00
 
-Case M=16384 N=8192 dtype=torch.bfloat16 block=32 tiles=(16,64) deq_tile=128
-  Triton FakeQuant:  avg 0.433 ms  min 0.427 ms  max 0.451 ms  ~BW 1240.88 GB/s
-  Python FakeQuant:  avg 18.509 ms  min 18.494 ms  max 18.602 ms
-  MXFP4QTensor.quantize: avg 20.426 ms  min 20.412 ms  max 20.498 ms  outputs ~67.11MB packed + 4.19MB scales
-  Triton Dequant:     avg 0.551 ms  min 0.544 ms  max 0.563 ms  ~BW 1103.71 GB/s
-  Python Dequantize:  avg 3.936 ms  min 3.924 ms  max 3.950 ms
-  Dequant correctness: max diff 0.00e+00  mean diff 0.00e+00
+| Case |     M |     N | dtype          | block |  tiles  | deq\_tile | Triton FakeQuant avg (ms) | Triton FakeQuant min (ms) | Triton FakeQuant max (ms) | Triton FakeQuant \~BW (GB/s) | Python FakeQuant avg (ms) | Python FakeQuant min (ms) | Python FakeQuant max (ms) | MXFP4QTensor.quantize avg (ms) | MXFP4QTensor.quantize min (ms) | MXFP4QTensor.quantize max (ms) | outputs packed (MB) | outputs scales (MB) | Triton Dequant avg (ms) | Triton Dequant min (ms) | Triton Dequant max (ms) | Triton Dequant \~BW (GB/s) | Python Dequantize avg (ms) | Python Dequantize min (ms) | Python Dequantize max (ms) | Dequant correctness max diff | Dequant correctness mean diff |
+| :--: | ----: | ----: | :------------- | ----: | :-----: | --------: | ------------------------: | ------------------------: | ------------------------: | ---------------------------: | ------------------------: | ------------------------: | ------------------------: | -----------------------------: | -----------------------------: | -----------------------------: | ------------------: | ------------------: | ----------------------: | ----------------------: | ----------------------: | -------------------------: | -------------------------: | -------------------------: | -------------------------: | ---------------------------: | ----------------------------: |
+|   1  |  8192 |  8192 | torch.bfloat16 |    32 | (16,64) |       128 |                     0.231 |                     0.226 |                     0.243 |                      1164.04 |                     9.367 |                     9.355 |                     9.412 |                         10.303 |                         10.295 |                         10.319 |               33.55 |                2.10 |                   0.287 |                   0.280 |                   0.299 |                    1058.10 |                      2.033 |                      2.025 |                      2.042 |                     0.00e+00 |                      0.00e+00 |
+|   2  | 16384 |  8192 | torch.bfloat16 |    32 | (16,64) |       128 |                     0.433 |                     0.427 |                     0.451 |                      1240.88 |                    18.509 |                    18.494 |                    18.602 |                         20.426 |                         20.412 |                         20.498 |               67.11 |                4.19 |                   0.551 |                   0.544 |                   0.563 |                    1103.71 |                      3.936 |                      3.924 |                      3.950 |                     0.00e+00 |                      0.00e+00 |
+|   3  |  8192 | 16384 | torch.bfloat16 |    32 | (16,64) |       128 |                     0.433 |                     0.427 |                     0.453 |                      1238.86 |                    18.510 |                    18.493 |                    18.606 |                         20.423 |                         20.414 |                         20.450 |               67.11 |                4.19 |                   0.551 |                   0.545 |                   0.571 |                    1103.18 |                      3.934 |                      3.926 |                      3.956 |                     0.00e+00 |                      0.00e+00 |
 
-Case M=8192 N=16384 dtype=torch.bfloat16 block=32 tiles=(16,64) deq_tile=128
-  Triton FakeQuant:  avg 0.433 ms  min 0.427 ms  max 0.453 ms  ~BW 1238.86 GB/s
-  Python FakeQuant:  avg 18.510 ms  min 18.493 ms  max 18.606 ms
-  MXFP4QTensor.quantize: avg 20.423 ms  min 20.414 ms  max 20.450 ms  outputs ~67.11MB packed + 4.19MB scales
-  Triton Dequant:     avg 0.551 ms  min 0.545 ms  max 0.571 ms  ~BW 1103.18 GB/s
-  Python Dequantize:  avg 3.934 ms  min 3.926 ms  max 3.956 ms
-  Dequant correctness: max diff 0.00e+00  mean diff 0.00e+00
+
+
 
 _CudaDeviceProperties(name='NVIDIA B200', major=10, minor=0, total_memory=182631MB, multi_processor_count=148, uuid=33570550-e7fb-db02-e674-05f9a99629ab, pci_bus_id=81, pci_device_id=0, pci_domain_id=0, L2_cache_size=126MB)
 GPU: NVIDIA B200, SMs=148, mem=191.5 GB
