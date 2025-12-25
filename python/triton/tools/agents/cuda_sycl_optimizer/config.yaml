@@ -1,0 +1,304 @@
+# CUDA-to-SYCL Agent Configuration
+
+# Agent Information
+agent:
+  name: "CUDA-SYCL Optimization Agent"
+  version: "1.0.0"
+  description: "Automatically detects CUDA optimizations and generates SYCL recommendations"
+
+# Change Detection Configuration
+detection:
+  # GitHub API settings
+  api:
+    token: "${GITHUB_TOKEN}"  # Set via environment variable
+    rate_limit_retry: true
+    timeout: 30  # seconds
+  
+  # Repositories to monitor
+  repositories:
+    - owner: "pytorch"
+      repo: "pytorch"
+      branches:
+        - "main"
+        - "master"
+      paths:
+        - "aten/src/ATen/cuda/**"
+        - "aten/src/ATen/native/cuda/**"
+        - "c10/cuda/**"
+      enabled: true
+      
+    - owner: "NVIDIA"
+      repo: "cuda-samples"
+      branches:
+        - "master"
+      paths:
+        - "Samples/**/*.cu"
+        - "Samples/**/*.cuh"
+      enabled: true
+      
+    - owner: "pytorch"
+      repo: "pytorch"
+      branches:
+        - "main"
+      paths:
+        - "torch/csrc/cuda/**"
+      enabled: false
+  
+  # Polling configuration
+  polling:
+    interval: 3600  # Poll every hour
+    max_age_days: 30  # Look back 30 days on first run
+    concurrent_repos: 5  # Check up to 5 repos concurrently
+  
+  # Webhook configuration (alternative to polling)
+  webhook:
+    enabled: false
+    port: 8080
+    path: "/webhooks/github"
+    secret: "${WEBHOOK_SECRET}"
+  
+  # Filters for relevant changes
+  filters:
+    # Minimum lines changed to consider
+    min_lines_changed: 10
+    max_lines_changed: 5000
+    
+    # Include PRs/commits with these labels
+    include_labels:
+      - "performance"
+      - "optimization"
+      - "cuda"
+      - "kernel"
+      - "speedup"
+      
+    # Exclude PRs/commits with these labels
+    exclude_labels:
+      - "documentation"
+      - "ci"
+      - "wip"
+      - "draft"
+      
+    # File patterns to watch
+    include_file_patterns:
+      - "*.cu"
+      - "*.cuh"
+      - "*.cuda"
+      
+    # File patterns to ignore
+    exclude_file_patterns:
+      - "test/*"
+      - "benchmark/*"
+      - "*.md"
+
+# Analysis Configuration
+analysis:
+  # LLM configuration for code analysis
+  llm:
+    provider: "openai"  # Options: "openai", "anthropic", "local"
+    model: "gpt-4"
+    api_key: "${OPENAI_API_KEY}"
+    temperature: 0.2
+    max_tokens: 4000
+    timeout: 60
+    
+  # Pattern matching configuration
+  patterns:
+    # Pattern database
+    database:
+      type: "memory"  # Options: "memory", "sqlite", "postgresql"
+      connection: ""
+      
+    # Similarity threshold for pattern matching (0-1)
+    similarity_threshold: 0.75
+    
+    # Confidence threshold for reporting (0-1)
+    confidence_threshold: 0.70
+    
+  # Performance modeling
+  performance_model:
+    enabled: true
+    confidence_threshold: 0.8
+    use_historical_data: true
+    
+  # Code analysis tools
+  tools:
+    use_tree_sitter: true
+    use_llvm_tools: false
+    use_static_analyzer: true
+
+# Recommendation Configuration
+recommendation:
+  # Target SYCL repository
+  target_repository:
+    owner: "my-org"
+    repo: "sycl-kernels"
+    base_branch: "main"
+    
+  # Translation settings
+  translation:
+    quality_threshold: 0.85
+    generate_tests: true
+    generate_benchmarks: true
+    include_documentation: true
+    
+  # Priority calculation weights
+  prioritization:
+    factors:
+      performance_impact: 0.40
+      implementation_complexity: 0.30
+      risk_level: 0.20
+      maintenance_burden: 0.10
+      
+  # SYCL implementations to support
+  sycl_targets:
+    - name: "DPC++"
+      enabled: true
+      version: "2023.2.0"
+    - name: "hipSYCL"
+      enabled: true
+      version: "0.9.4"
+    - name: "ComputeCpp"
+      enabled: false
+      version: "2.11.0"
+
+# PR Generation Configuration
+pr_generation:
+  # Automatic PR creation
+  auto_create: false  # Require manual approval by default
+  auto_create_low_risk: true  # Auto-create low-risk PRs
+  
+  # PR settings
+  draft_mode: true
+  assign_reviewers:
+    - "sycl-team-lead"
+    - "kernel-expert"
+  labels:
+    - "optimization"
+    - "auto-generated"
+    - "needs-review"
+    - "sycl"
+    
+  # Branch naming
+  branch_prefix: "sycl-opt/"
+  branch_suffix: ""  # Optional timestamp will be added
+  
+  # PR template
+  template:
+    include_benchmark_plan: true
+    include_test_checklist: true
+    link_to_cuda_pr: true
+    add_reviewer_notes: true
+    
+  # Commit settings
+  commits:
+    sign: false
+    author_name: "CUDA-SYCL Agent"
+    author_email: "agent@example.com"
+    commit_message_prefix: "[Auto]"
+
+# Notification Configuration
+notifications:
+  # Slack notifications
+  slack:
+    enabled: false
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+    channels:
+      - "#optimizations"
+      - "#sycl-team"
+    notify_on:
+      - "change_detected"
+      - "high_priority_recommendation"
+      - "pr_created"
+      
+  # Email notifications
+  email:
+    enabled: false
+    smtp_server: "smtp.example.com"
+    smtp_port: 587
+    smtp_user: "${SMTP_USER}"
+    smtp_password: "${SMTP_PASSWORD}"
+    from_address: "cuda-sycl-agent@example.com"
+    recipients:
+      - "sycl-team@example.com"
+    notify_on:
+      - "high_priority_recommendation"
+      - "pr_created"
+      
+  # GitHub notifications (comments on PRs)
+  github:
+    enabled: false
+    comment_on_source_pr: false
+    mention_users:
+      - "@sycl-maintainer"
+
+# Storage Configuration
+storage:
+  # Database for tracking changes and recommendations
+  database:
+    type: "sqlite"  # Options: "sqlite", "postgresql", "mysql"
+    connection: "./cuda_sycl_agent.db"
+    
+  # Cache configuration
+  cache:
+    enabled: true
+    type: "redis"  # Options: "redis", "memory"
+    redis_url: "redis://localhost:6379/0"
+    ttl: 86400  # 24 hours
+    
+  # Logging
+  logging:
+    level: "INFO"  # Options: "DEBUG", "INFO", "WARNING", "ERROR"
+    file: "./logs/agent.log"
+    rotate: true
+    max_size_mb: 100
+    backup_count: 5
+
+# Monitoring and Metrics
+monitoring:
+  # Prometheus metrics
+  prometheus:
+    enabled: false
+    port: 9090
+    path: "/metrics"
+    
+  # Health check
+  health_check:
+    enabled: true
+    port: 8081
+    path: "/health"
+    
+  # Metrics to track
+  metrics:
+    - "changes_detected"
+    - "patterns_identified"
+    - "recommendations_generated"
+    - "prs_created"
+    - "detection_latency"
+    - "analysis_duration"
+
+# Advanced Features
+advanced:
+  # Machine learning enhancements
+  ml:
+    enabled: false
+    model_path: "./models/"
+    use_embeddings: false
+    retrain_on_feedback: false
+    
+  # Experimental features
+  experimental:
+    bidirectional_sync: false  # SYCL → CUDA
+    multi_target_generation: false  # Generate for HIP, Metal, etc.
+    auto_benchmark: false
+    
+  # Rate limiting
+  rate_limiting:
+    enabled: true
+    max_api_calls_per_hour: 5000
+    max_prs_per_day: 10
+    
+  # Security
+  security:
+    verify_signatures: true
+    sandbox_code_execution: true
+    scan_for_secrets: true
