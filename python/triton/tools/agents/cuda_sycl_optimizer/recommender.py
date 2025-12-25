@@ -9,7 +9,10 @@ from dataclasses import dataclass
 from typing import List, Dict, Optional
 from enum import Enum
 
-from .analyzer import OptimizationPattern, OptimizationReport
+try:
+    from .analyzer import OptimizationPattern, OptimizationReport
+except ImportError:
+    from analyzer import OptimizationPattern, OptimizationReport
 
 logger = logging.getLogger(__name__)
 

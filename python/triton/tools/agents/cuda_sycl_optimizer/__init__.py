@@ -5,10 +5,20 @@ This module provides tools for detecting CUDA kernel optimizations and
 generating SYCL optimization recommendations.
 """
 
-from .detector import ChangeDetector
-from .analyzer import OptimizationAnalyzer
-from .recommender import SyclRecommender
-from .pr_generator import PRGenerator
+try:
+    from .detector import ChangeDetector
+    from .analyzer import OptimizationAnalyzer
+    from .recommender import SyclRecommender
+    from .pr_generator import PRGenerator
+except ImportError:
+    # Fallback for when module is run standalone
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent))
+    from detector import ChangeDetector
+    from analyzer import OptimizationAnalyzer
+    from recommender import SyclRecommender
+    from pr_generator import PRGenerator
 
 __all__ = [
     'ChangeDetector',

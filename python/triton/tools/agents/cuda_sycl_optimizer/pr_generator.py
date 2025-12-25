@@ -9,7 +9,10 @@ from dataclasses import dataclass
 from typing import List, Dict, Optional
 from datetime import datetime
 
-from .recommender import RecommendationReport, SyclRecommendation
+try:
+    from .recommender import RecommendationReport, SyclRecommendation
+except ImportError:
+    from recommender import RecommendationReport, SyclRecommendation
 
 logger = logging.getLogger(__name__)
 
